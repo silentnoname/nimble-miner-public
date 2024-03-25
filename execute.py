@@ -49,7 +49,7 @@ def execute(task_args):
         tokenized_datasets["train"].shuffle(seed=task_args["seed"]).select(range(task_args["num_rows"]))
     )
     training_args = TrainingArguments(
-        output_dir="my_model", evaluation_strategy="epoch"
+        torch_compile= True , fp16= True,tf32= True,per_device_train_batch_size=32, output_dir="my_model", evaluation_strategy="epoch"
     )
 
     trainer = Trainer(
@@ -96,6 +96,7 @@ def complete_task(wallet_address, max_retries=5, initial_backoff=5):
             if response.status_code == 200:
                 return response.json()
             else:
+                print(f"Failed to complete task: {response.text}")
                 raise Exception(f"Failed to complete task: Status code {response.status_code}")
         except Exception as e:
             if attempt < max_retries - 1:
@@ -107,7 +108,7 @@ def complete_task(wallet_address, max_retries=5, initial_backoff=5):
 
 
 def perform():
-    addr = sys.argv[1] 
+    addr = sys.argv[1]
     if addr is not None:
         print_in_color(f"Address {addr} started to work.", "\033[33m")
         while True:
@@ -124,6 +125,6 @@ def perform():
                 print_in_color(f"Error: {e}", "\033[31m")
     else:
         print_in_color("Address not provided.", "\033[31m")
-    
+
 if __name__ == "__main__":
     perform()
