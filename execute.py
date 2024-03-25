@@ -79,7 +79,7 @@ def register_particle(addr):
     return task['args']
 
 
-def complete_task(wallet_address):
+def complete_task(wallet_address, max_retries=5, initial_backoff=5):
     """This function completes the task."""
 
     url = f"{node_url}/complete_task"
@@ -89,10 +89,21 @@ def complete_task(wallet_address):
     }
     json_data = json.dumps({"address": wallet_address})
     files["r"] = (None, json_data, "application/json")
-    response = requests.post(url, files=files, timeout=60)
-    if response.status_code != 200:
-        raise Exception(f"Failed to complete task: Try later.")
-    return response.json()
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, files=files, timeout=60)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                raise Exception(f"Failed to complete task: Status code {response.status_code}")
+        except Exception as e:
+            if attempt < max_retries - 1:
+                backoff_time = initial_backoff * (2 ** attempt)
+                print(f"Failed to complete task: {e}. Retrying in {backoff_time} seconds...")
+                time.sleep(backoff_time)
+            else:
+                raise Exception(f"Failed to complete task after {max_retries} attempts.") from e
 
 
 def perform():
@@ -102,7 +113,7 @@ def perform():
         while True:
             try:
                 print_in_color(f"Preparing", "\033[33m")
-                time.sleep(60)
+                time.sleep(10)
                 task_args = register_particle(addr)
                 print_in_color(f"Address {addr} received the task.", "\033[33m")
                 execute(task_args)
